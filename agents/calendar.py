@@ -4,136 +4,74 @@ from services.openai_client import generate
 def create_calendar(client):
 
     prompt = f"""
-You are an elite social media strategist.
-
-Create 7 Instagram posts for:
-
 Niche: {client["niche"]}
 
-For each post include:
-- Hook (must be emotional or attention-grabbing)
-- Caption (ready to post)
-- Hashtags (5-10 relevant ones)
-- Reel Script (short structure)
-- Best Time (posting time)
+Create a 7-day Instagram content plan.
 
-IMPORTANT:
-Each post must be completely different in style:
-viral, educational, storytelling, controversial, authority, engagement, sales.
-
-Also add a short explanation for EACH post:
-"Why this post will perform well"
-
-FORMAT EXACTLY:
-
-Day 1:
-Hook: ...
-Caption: ...
-Hashtags: ...
-Reel Script: ...
-Best Time: ...
-Why it works: ...
-
-(repeat for Day 2 - Day 7)
+Make it diverse, strategic, and realistic.
 """
 
-    result = generate(prompt)
-
-    lines = result.split("\n")
+    data = generate(prompt)
 
     calendar = []
 
-    days = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"]
-
-    current = {
-        "hook": "",
-        "caption": "",
-        "hashtags": "",
-        "reel_script": "",
-        "best_time": "",
-        "why": ""
-    }
+    if not isinstance(data, list):
+        return []
 
     i = 0
-    d = 0
+    while i < len(data):
 
-    while i < len(lines) and d < 7:
+        item = data[i]
 
-        line = lines[i].strip()
+        score = item.get("score", 75)
 
-        if line.startswith("Day"):
-
-            if current["hook"] != "" or current["caption"] != "":
-
-                calendar.append({
-                    "day": days[d],
-                    "idea": current["hook"],
-                    "caption": current["caption"],
-                    "hashtags": current["hashtags"],
-                    "reel_script": current["reel_script"],
-                    "best_time": current["best_time"],
-                    "why": current["why"],
-                    "score": 80 + d
-                })
-
-                d += 1
-
-                current = {
-                    "hook": "",
-                    "caption": "",
-                    "hashtags": "",
-                    "reel_script": "",
-                    "best_time": "",
-                    "why": ""
-                }
-
-        elif "Hook:" in line:
-            current["hook"] = line.replace("Hook:", "").strip()
-
-        elif "Caption:" in line:
-            current["caption"] = line.replace("Caption:", "").strip()
-
-        elif "Hashtags:" in line:
-            current["hashtags"] = line.replace("Hashtags:", "").strip()
-
-        elif "Reel Script:" in line:
-            current["reel_script"] = line.replace("Reel Script:", "").strip()
-
-        elif "Best Time:" in line:
-            current["best_time"] = line.replace("Best Time:", "").strip()
-
-        elif "Why it works:" in line:
-            current["why"] = line.replace("Why it works:", "").strip()
+        calendar.append({
+            "day": item.get("day", f"Day {i+1}"),
+            "idea": item.get("hook", ""),
+            "caption": item.get("caption", ""),
+            "hashtags": item.get("hashtags", ""),
+            "reel_script": item.get("reel_script", ""),
+            "why": item.get("why", ""),
+            "score": score
+        })
 
         i += 1
 
-    # fallback safety
-    if len(calendar) == 0:
-
-        fallback = [
-            "Strong emotional hook",
-            "Educational value",
-            "Relatable problem",
-            "Controversial angle",
-            "Proof/authority",
-            "Engagement trigger",
-            "Clear offer"
-        ]
-
-        i = 0
-        while i < 7:
-
-            calendar.append({
-                "day": days[i],
-                "idea": fallback[i],
-                "caption": fallback[i],
-                "hashtags": "#marketing #growth #business #socialmedia #tips",
-                "reel_script": "Hook → Value → CTA",
-                "best_time": "6-9 PM",
-                "why": "This post is optimized for engagement",
-                "score": 70 + i
-            })
-
-            i += 1
-
     return calendar
+
+
+def generate_strategy_insight(calendar, niche):
+
+    if len(calendar) == 0:
+        return "No data available."
+
+    total = 0
+    i = 0
+    while i < len(calendar):
+        total += calendar[i]["score"]
+        i += 1
+
+    avg = total / len(calendar)
+
+    best = max(calendar, key=lambda x: x["score"])
+    worst = min(calendar, key=lambda x: x["score"])
+
+    insight = f"""
+STRATEGY ANALYSIS FOR NICHE: {niche}
+
+Overall Performance:
+- Average Score: {round(avg, 1)}
+- Best Post: {best['idea']} (Score: {best['score']})
+- Weakest Post: {worst['idea']} (Score: {worst['score']})
+
+Strategic Summary:
+- This week is { "strong" if avg > 80 else "moderate" if avg > 75 else "weak" } in performance potential.
+- Content is strongest in high-engagement hooks and weakest in consistency of depth.
+
+Recommendations:
+- Double down on viral hook style used in best post
+- Improve weaker posts by adding emotional triggers or storytelling
+- Avoid repetitive caption structure across days
+"""
+
+    return insight

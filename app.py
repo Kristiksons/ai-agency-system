@@ -1,11 +1,13 @@
 import streamlit as st
-import pandas as pd
-import random
 
 from agents.clients import get_clients
-from agents.calendar import create_calendar
+from agents.calendar import create_calendar, generate_strategy_insight
 from agents.export import export_pdf
 
+from services.db import init_db, save_history, load_history
+
+
+init_db()
 
 st.set_page_config(page_title="AI Content Agency", layout="wide")
 
@@ -22,12 +24,16 @@ while i < len(clients):
     i += 1
 
 
-# ---------------- SESSION STATE ----------------
+# ---------------- SESSION ----------------
 if "selected_client" not in st.session_state:
     st.session_state.selected_client = client_names[0]
 
 if "calendar" not in st.session_state:
     st.session_state.calendar = []
+
+
+# ---------------- HISTORY ----------------
+history = load_history()
 
 
 # ---------------- SIDEBAR ----------------
@@ -51,134 +57,66 @@ while i < len(clients):
     i += 1
 
 
-st.sidebar.markdown("---")
 st.sidebar.write("📌 Active:", client["name"])
 st.sidebar.write("🎯 Niche:", client["niche"])
-
-
-# ---------------- EMPTY STATE ----------------
-if len(st.session_state.calendar) == 0:
-
-    st.info("👈 Select a client and generate a strategy to get started")
-
-    st.markdown("### 🚀 What this tool does:")
-    st.write("- Generates 7-day content strategy")
-    st.write("- Creates hooks, captions, hashtags, scripts")
-    st.write("- Ranks best-performing posts")
-    st.write("- Shows analytics dashboard")
-    st.write("- Exports client-ready PDF report")
 
 
 # ---------------- GENERATE ----------------
 if st.button("🚀 Generate Strategy"):
 
     with st.spinner("AI is building strategy..."):
-        st.session_state.calendar = create_calendar(client)
+        new_calendar = create_calendar(client)
 
-    st.success("Strategy generated 🔥")
+    st.session_state.calendar = new_calendar
+
+    save_history(client["name"], client["niche"], new_calendar)
+
+    st.success("Saved + Generated 🔥")
 
 
-# ---------------- OUTPUT ----------------
 calendar = st.session_state.calendar
 
+
+# ---------------- INSIGHTS ----------------
 if len(calendar) > 0:
 
-    calendar = sorted(calendar, key=lambda x: x["score"], reverse=True)
+    st.markdown("## 🧠 Strategy Insights")
 
-    # ---------------- BEST POST ----------------
-    best = calendar[0]
+    insight = generate_strategy_insight(calendar, client["niche"])
+    st.info(insight)
 
-    st.markdown("## 🔥 Best Performing Post")
 
-    col1, col2 = st.columns([2, 1])
+# ---------------- EMPTY ----------------
+if len(calendar) == 0:
+    st.info("👈 Click Generate Strategy")
+    st.stop()
 
-    with col1:
-        st.info(best["idea"])
-        st.write("📝", best["caption"])
-        st.code(best.get("hashtags", ""))
 
-    with col2:
-        st.metric("Score", best["score"])
-        st.write("📅 Day:", best["day"])
-        st.write("⏰ Time:", best.get("best_time", ""))
-        st.write("🧠 Why:", best.get("why", ""))
+# ---------------- WEEKLY PLAN ----------------
+st.subheader("📅 Weekly Plan")
 
-    st.markdown("---")
+i = 0
+while i < len(calendar):
 
-    # ---------------- ANALYTICS ----------------
-    st.subheader("📊 Performance Overview")
+    item = calendar[i]
 
-    df = pd.DataFrame([
-        {
-            "Day": item["day"],
-            "Score": item["score"],
-            "Engagement": item["score"] + random.randint(-5, 10),
-            "Reach": item["score"] * random.randint(80, 120),
-        }
-        for item in calendar
-    ])
-
-    st.line_chart(df.set_index("Day"))
+    st.markdown(f"### {item['day']}")
+    st.write(item["idea"])
+    st.write(item["caption"])
+    st.write("Score:", item["score"])
 
     st.markdown("---")
 
-    st.subheader("📈 Viral Potential Breakdown")
+    i += 1
 
-    col1, col2, col3 = st.columns(3)
 
-    avg_score = sum([item["score"] for item in calendar]) / len(calendar)
+# ---------------- EXPORT ----------------
+pdf_file = export_pdf(calendar)
 
-    with col1:
-        st.metric("Avg Score", round(avg_score, 1))
-
-    with col2:
-        st.metric("Best Day", max(calendar, key=lambda x: x["score"])["day"])
-
-    with col3:
-        st.metric("Total Posts", len(calendar))
-
-    st.markdown("### 🔥 Post Performance Table")
-
-    st.dataframe(df)
-
-    st.markdown("---")
-
-    # ---------------- FULL PLAN ----------------
-    st.subheader("📅 Weekly Content Plan")
-
-    i = 0
-    while i < len(calendar):
-
-        item = calendar[i]
-
-        with st.container():
-
-            st.markdown(f"### 📅 {item['day']}")
-
-            col1, col2 = st.columns(2)
-
-            with col1:
-                st.write("💡 Hook:", item["idea"])
-                st.write("📝 Caption:", item["caption"])
-                st.code(item.get("hashtags", ""))
-
-            with col2:
-                st.write("🎬 Script:", item.get("reel_script", ""))
-                st.write("⏰ Best Time:", item.get("best_time", ""))
-                st.write("🧠 Why:", item.get("why", ""))
-                st.metric("Score", item["score"])
-
-        st.markdown("---")
-
-        i += 1
-
-    # ---------------- EXPORT ----------------
-    pdf_file = export_pdf(calendar)
-
-    with open(pdf_file, "rb") as f:
-        st.download_button(
-            "📥 Download Client Report",
-            f,
-            file_name="ai_content_report.pdf",
-            mime="application/pdf"
-        )
+with open(pdf_file, "rb") as f:
+    st.download_button(
+        "📥 Download Report",
+        f,
+        file_name="report.pdf",
+        mime="application/pdf"
+    )

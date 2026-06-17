@@ -1,108 +1,73 @@
-import random
+import os
+import json
+from groq import Groq
+from dotenv import load_dotenv
+
+load_dotenv()
+
+client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 
 def generate(prompt):
 
-    niche = "business"
+    system_prompt = """
+You are a world-class social media strategist working inside a top marketing agency.
 
-    if "niche:" in prompt.lower():
-        try:
-            niche = prompt.lower().split("niche:")[1].split("\n")[0].strip()
-        except:
-            pass
+Your job is to create HIGH VARIETY, NON-REPETITIVE weekly content plans.
 
-    content_types = [
-        "viral",
-        "educational",
-        "storytelling",
-        "controversial",
-        "authority",
-        "engagement",
-        "sales"
-    ]
+You must think like a strategist, not a template generator.
 
-    hooks = {
-        "viral": [
-            f"The biggest mistake in {niche}",
-            f"Nobody talks about this in {niche}",
-            f"This is why most people fail in {niche}"
-        ],
-        "educational": [
-            f"3 things every {niche} business should know",
-            f"The beginner guide to {niche}",
-            f"How successful people approach {niche}"
-        ],
-        "storytelling": [
-            f"A client completely changed their results with this",
-            f"How one small change transformed a business",
-            f"The lesson we learned the hard way"
-        ],
-        "controversial": [
-            f"Unpopular opinion about {niche}",
-            f"Most experts are wrong about this",
-            f"Stop following this common advice"
-        ],
-        "authority": [
-            f"What years of experience taught us",
-            f"The framework professionals actually use",
-            f"The strategy behind consistent results"
-        ],
-        "engagement": [
-            f"What's your biggest challenge with {niche}?",
-            f"Agree or disagree?",
-            f"We want your opinion on this"
-        ],
-        "sales": [
-            f"Ready to improve your {niche} results?",
-            f"Here's how we can help",
-            f"Let's solve your biggest problem"
-        ]
-    }
+Return ONLY valid JSON array with 7 items.
 
-    captions = {
-        "viral": f"Most people never realize this until it's too late in {niche}.",
-        "educational": f"Here's a practical lesson you can apply today.",
-        "storytelling": f"This real story contains an important lesson.",
-        "controversial": f"You may disagree, but here's our perspective.",
-        "authority": f"This comes from real experience and testing.",
-        "engagement": f"Drop your answer in the comments.",
-        "sales": f"If you want faster results, let's talk."
-    }
+Each item:
 
-    why_it_works = {
-        "viral": "Strong curiosity creates higher watch time.",
-        "educational": "Educational content gets saved frequently.",
-        "storytelling": "Stories increase audience connection.",
-        "controversial": "Controversy drives comments and discussion.",
-        "authority": "Authority content builds trust.",
-        "engagement": "Questions increase interaction.",
-        "sales": "Strong CTA can generate leads."
-    }
+{
+  "day": "Monday",
+  "hook": "...",
+  "caption": "...",
+  "hashtags": "...",
+  "reel_script": "...",
+  "best_time": "...",
+  "why": "..."
+}
 
-    posting_times = [
-        "7:00 AM",
-        "12:00 PM",
-        "6:00 PM",
-        "8:00 PM"
-    ]
+🔥 IMPORTANT STRATEGY RULES:
+Each day MUST follow a different content angle:
 
-    result = ""
+- Monday: attention-grabbing viral hook
+- Tuesday: educational value post
+- Wednesday: storytelling / real example
+- Thursday: controversial opinion
+- Friday: authority / credibility building
+- Saturday: engagement / question post
+- Sunday: soft sales / call to action
 
-    i = 0
-    while i < len(content_types):
+🔥 CONTENT RULES:
+- Hooks must NOT repeat structure
+- Captions must be specific, not generic advice
+- Include real-world style phrasing (not AI-sounding)
+- No filler sentences like "this is important"
+- Each post should feel like a real Instagram creator wrote it
 
-        content_type = content_types[i]
-
-        result += f"""
-Day {i + 1}:
-Hook: {random.choice(hooks[content_type])}
-Caption: {captions[content_type]}
-Hashtags: #{niche.replace(' ', '')} #marketing #growth #business #content
-Reel Script: Hook -> Value -> CTA
-Best Time: {random.choice(posting_times)}
-Why it works: {why_it_works[content_type]}
+🔥 OUTPUT RULE:
+Return ONLY JSON. No markdown. No explanations.
 """
 
-        i += 1
+    response = client.chat.completions.create(
+        model="llama-3.1-8b-instant",
+        messages=[
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": prompt}
+        ],
+        temperature=0.95
+    )
 
-    return result
+    content = response.choices[0].message.content
+
+    try:
+        data = json.loads(content)
+        if isinstance(data, list):
+            return data
+        return []
+    except:
+        return []
