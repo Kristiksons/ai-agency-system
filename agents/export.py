@@ -1,50 +1,48 @@
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
 
 
-def export_pdf(calendar, filename="strategy_report.pdf"):
+def export_pdf(calendar):
 
-    doc = SimpleDocTemplate(filename)
-    styles = getSampleStyleSheet()
+    file_path = "report.pdf"
 
-    content = []
+    c = canvas.Canvas(file_path, pagesize=letter)
 
-    # ---------------- TITLE ----------------
-    content.append(Paragraph("AI CONTENT STRATEGY REPORT", styles["Title"]))
-    content.append(Spacer(1, 12))
+    y = 750
 
-    content.append(Paragraph("Weekly Social Media Plan", styles["Heading2"]))
-    content.append(Spacer(1, 20))
+    c.setFont("Helvetica-Bold", 16)
+    c.drawString(50, y, "AI Content Strategy Report")
 
-    # ---------------- POSTS ----------------
+    y -= 40
+
     i = 0
     while i < len(calendar):
 
         item = calendar[i]
 
-        content.append(Paragraph(f"<b>Day:</b> {item.get('day','')}", styles["Heading3"]))
-        content.append(Spacer(1, 6))
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(50, y, f"{item['day']}")
 
-        content.append(Paragraph(f"<b>Hook:</b> {item.get('idea','')}", styles["Normal"]))
-        content.append(Spacer(1, 4))
+        y -= 20
 
-        content.append(Paragraph(f"<b>Caption:</b> {item.get('caption','')}", styles["Normal"]))
-        content.append(Spacer(1, 4))
+        c.setFont("Helvetica", 10)
+        c.drawString(60, y, f"Idea: {item['idea']}")
 
-        content.append(Paragraph(f"<b>Hashtags:</b> {item.get('hashtags','')}", styles["Normal"]))
-        content.append(Spacer(1, 4))
+        y -= 15
+        c.drawString(60, y, f"Caption: {item['caption']}")
 
-        content.append(Paragraph(f"<b>Reel Script:</b> {item.get('reel_script','')}", styles["Normal"]))
-        content.append(Spacer(1, 4))
+        y -= 15
+        c.drawString(60, y, f"Score: {item['score']}")
 
-        content.append(Paragraph(f"<b>Best Time:</b> {item.get('best_time','')}", styles["Normal"]))
-        content.append(Spacer(1, 4))
+        y -= 30
 
-        content.append(Paragraph(f"<b>Score:</b> {item.get('score','')}", styles["Normal"]))
-        content.append(Spacer(1, 20))
+        # page break
+        if y < 100:
+            c.showPage()
+            y = 750
 
         i += 1
 
-    doc.build(content)
+    c.save()
 
-    return filename
+    return file_path

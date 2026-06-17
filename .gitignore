@@ -1,4 +1,4 @@
 .env
-data.db
-__pycache__/
 venv/
+__pycache__/
+data.db
