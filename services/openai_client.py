@@ -2,11 +2,12 @@ import os
 from groq import Groq
 from dotenv import load_dotenv
 
-load_dotenv()  # 👈 THIS is the magic line
+load_dotenv()
 
 
+# ---------------- GET API KEY SAFELY ----------------
 def get_api_key():
-    # 1. Try Streamlit Cloud
+    # 1. Streamlit Cloud secrets
     try:
         import streamlit as st
         if "GROQ_API_KEY" in st.secrets:
@@ -14,24 +15,31 @@ def get_api_key():
     except:
         pass
 
-    # 2. Try .env / system env
-    key = os.getenv("GROQ_API_KEY")
-
-    if not key:
-        raise ValueError("❌ Missing GROQ_API_KEY (check .env or Streamlit secrets)")
-
-    return key
+    # 2. Local .env / system env
+    return os.getenv("GROQ_API_KEY")
 
 
-client = Groq(api_key=get_api_key())
+api_key = get_api_key()
+
+if not api_key:
+    raise ValueError("❌ GROQ_API_KEY missing (add it to .env or Streamlit secrets)")
 
 
+# ---------------- INIT GROQ CLIENT ----------------
+client = Groq(api_key=api_key)
+
+
+# ---------------- GENERATE FUNCTION ----------------
 def generate(prompt):
-    response = client.chat.completions.create(
-        model="llama3-70b-8192",
-        messages=[
-            {"role": "user", "content": prompt}
-        ]
-    )
+    try:
+        response = client.chat.completions.create(
+            model="llama-3.1-8b-instant",  # ✅ stable + fast + free tier friendly
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
+        )
 
-    return response.choices[0].message.content
+        return response.choices[0].message.content
+
+    except Exception as e:
+        return f"❌ Groq error: {str(e)}"
